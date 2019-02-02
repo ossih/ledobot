@@ -1,0 +1,6 @@
+airports.json
+config.json
+bot.log
+bot.pid
+*.pyc
+__pycache__

@@ -1,0 +1,9 @@
+{
+    "telegram": {
+        "token": "12345678:lsnvlkfdsnvlkjfdnalkdsjfnsaf"
+    },
+    "finavia": {
+        "app_id": "abcd1337",
+        "app_key": "1613451435abdfedfc432624354325"
+    }
+}

@@ -1,0 +1,7 @@
+#!/bin/bash
+
+DIR=/home/web/bot/ledo1337
+PIDFILE=$DIR/bot.pid
+LOGFILE=$DIR/bot.log
+
+kill `cat $PIDFILE`
