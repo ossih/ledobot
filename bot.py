@@ -20,7 +20,7 @@ with open('config.json', 'r') as f:
 
 def logLine(text):
     ts = time.strftime('%d.%m.%y %H:%M:%S')
-    print('%s >> %s'%(ts, text))
+    print('%s >> %s'%(ts, text), flush=True)
 
 
 def log_msg(update):

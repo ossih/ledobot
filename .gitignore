@@ -1,5 +1,6 @@
 airports.json
 config.json
+bot.err
 bot.log
 bot.pid
 *.pyc
