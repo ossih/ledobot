@@ -57,8 +57,8 @@ class NoData(Exception):
 
 def build_path(flight, arrival=False):
     rpoints = []
+    rex = re.compile('^route_[0-9]+$')
     for key in flight.keys():
-        rex = re.compile('^route_[0-9]+$')
         if rex.match(key):
             if flight[key]:
                 rpoints.append(flight[key])
@@ -78,8 +78,8 @@ def parse_time(sdt):
 
 def get_codes(flight):
     codes = []
+    rex = re.compile('^cflight_[0-9]+$')
     for key in flight.keys():
-        rex = re.compile('^cflight_[0-9]+$')
         if rex.match(key):
             if flight[key]:
                 codes.append(flight[key])
