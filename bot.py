@@ -400,11 +400,48 @@ def cmd_metar(bot, update, args):
     except:
         traceback.print_exc()
 
+def cmd_aircraft(bot, update, args):
+    try:
+        if len(args) == 0:
+            resp = 'Which aircraft?'
+            bot.sendMessage(chat_id=update.message.chat_id, text=resp)
+            return
+
+        aircraft = args[0].upper()
+        aircraft = aircraft.replace('-', '')
+        found = False
+        fapi.update()
+
+        for depnr in fapi.get_deps():
+            deps = fapi.get_dep(depnr)
+            for dep in deps:
+                if dep['acreg'] == aircraft:
+                    found = True
+                    resp = fmt_dep(dep)
+                    bot.sendMessage(chat_id=update.message.chat_id, text=resp)
+
+        for arrnr in fapi.get_arrs():
+            arrs = fapi.get_arr(arrnr)
+            for arr in arrs:
+                if arr['acreg'] == aircraft:
+                    found = True
+                    resp = fmt_arr(arr)
+                    bot.sendMessage(chat_id=update.message.chat_id, text=resp)
+
+        if not found:
+            resp = 'No flights found'
+            bot.sendMessage(chat_id=update.message.chat_id, text=resp)
+
+
+    except:
+        traceback.print_exc()
+
 
 dispatcher.add_handler(CommandHandler('start', start))
 dispatcher.add_handler(CommandHandler('metar', cmd_metar, pass_args=True))
 dispatcher.add_handler(CommandHandler('flight', cmd_flight, pass_args=True))
 dispatcher.add_handler(CommandHandler('flights', cmd_flights, pass_args=True))
+dispatcher.add_handler(CommandHandler('aircraft', cmd_aircraft, pass_args=True))
 
 logLine('Starting..')
 updater.start_polling()
