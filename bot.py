@@ -45,6 +45,7 @@ def log_msg(update):
 
 ledoclient = ledoproxy.ProxyClient(config['ledoproxy']['url'])
 airports = airport.Airports()
+metar = airport.Metar()
 
 updater = Updater(token=config['telegram']['token'])
 dispatcher = updater.dispatcher
@@ -334,32 +335,6 @@ def cmd_flights(bot, update, args):
     except:
         traceback.print_exc()
 
-
-def get_metar(code):
-    if re.match('^[A-Z0-9]{4}$', code):
-        icao = code
-    elif re.match('^[A-Z]{3}$', code):
-        iata = code
-        try:
-            aport = airports.get_by_iata(iata)
-            icao = aport['icao']
-        except airport.NoSuchAirport:
-            raise NoData
-
-    else:
-        raise NoData
-
-    req = requests.get('http://tgftp.nws.noaa.gov/data/observations/metar/stations/%s.TXT' % icao)
-
-    if req.status_code == 200:
-        lines = req.text.splitlines()
-        metar = lines[1]
-
-        return metar
-
-    else:
-        raise NoData
-
 def cmd_metar(bot, update, args):
     try:
         log_msg(update)
@@ -370,9 +345,8 @@ def cmd_metar(bot, update, args):
             code = args[0].upper()
 
             try:
-                metar = get_metar(code)
-                resp = metar
-            except NoData:
+                resp = metar.get(code)
+            except airport.NoData:
                 resp = '%s not found' % code
 
         bot.sendMessage(chat_id=update.message.chat_id, text=resp)

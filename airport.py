@@ -1,6 +1,11 @@
 import json
+import requests
+import re
 
 class NoSuchAirport(Exception):
+    pass
+
+class NoData(Exception):
     pass
 
 class Airports(object):
@@ -28,3 +33,39 @@ class Airports(object):
 
         # Not found
         raise NoSuchAirport
+
+
+class Metar(object):
+    def __init__(self):
+        self._baseurl = 'http://tgftp.nws.noaa.gov/data/observations/metar/stations/{}.TXT'
+        self._rex_icao = re.compile('^[A-Z0-9]{4}$')
+        self._rex_iata = re.compile('^[A-Z]{3}$')
+        self._airports = Airports()
+
+
+
+    def get(self, code):
+        if self._rex_icao.match(code):
+            icao = code
+        elif self._rex_iata.match(code):
+            iata = code
+            try:
+                aport = self._airports.get_by_iata(iata)
+                icao = aport['icao']
+            except NoSuchAirport:
+                raise NoData
+
+        else:
+            raise NoData
+
+        req = requests.get(self._baseurl.format(icao))
+
+        if req.status_code == 200:
+            lines = req.text.splitlines()
+            metar = lines[1]
+
+            return metar
+
+        else:
+            raise NoData
+
