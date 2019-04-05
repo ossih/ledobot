@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from telegram.ext import Updater, CommandHandler
-import finavia
+import ledoproxy
 import airport
 
 import re
@@ -43,7 +43,7 @@ def log_msg(update):
     line = ' : '.join((chat, sender, text))
     logLine(line)
 
-fapi = finavia.FinaviaAPI(config['finavia']['app_id'], config['finavia']['app_key'])
+ledoclient = ledoproxy.ProxyClient(config['ledoproxy']['url'])
 airports = airport.Airports()
 
 updater = Updater(token=config['telegram']['token'])
@@ -298,37 +298,19 @@ def cmd_flight(bot, update, args):
             bot.sendMessage(chat_id=update.message.chat_id, text=resp)
             return
 
-        fapi.update()
-        flights = sorted(list(set(fapi.get_arrs()) | set(fapi.get_deps())))
-        
         fltnr = args[0].upper()
-        if not fltnr in flights:
+        try:
+            for flight in ledoclient.get_flight(fltnr):
+                if flight['arrival']:
+                    resp = fmt_arr(flight)
+                    bot.sendMessage(chat_id=update.message.chat_id, text=resp)
+                else:
+                    resp = fmt_dep(flight)
+                    bot.sendMessage(chat_id=update.message.chat_id, text=resp)
+        except ledoproxy.NoFlight:
             resp = 'Flight %s not found' % fltnr
             bot.sendMessage(chat_id=update.message.chat_id, text=resp)
             return
-
-        try:
-            deps = fapi.get_dep(fltnr)
-            if update.message.chat_id == -344306389:
-                bot.sendMessage(chat_id=update.message.chat_id, text=deps)
-
-            for dep in deps:
-                resp = fmt_dep(dep)
-                bot.sendMessage(chat_id=update.message.chat_id, text=resp)
-        except finavia.NoSuchFlight:
-            pass
-
-        try:
-            arrs = fapi.get_arr(fltnr)
-            if update.message.chat_id == -344306389:
-                bot.sendMessage(chat_id=update.message.chat_id, text=arrs)
-
-            for arr in arrs:
-                resp = fmt_arr(arr)
-                bot.sendMessage(chat_id=update.message.chat_id, text=resp)
-        except finavia.NoSuchFlight:
-            pass
-
 
     except:
         traceback.print_exc()
@@ -336,13 +318,11 @@ def cmd_flight(bot, update, args):
 def cmd_flights(bot, update, args):
     log_msg(update)
     try:
-        fapi.update()
-        flights = sorted(list(set(fapi.get_arrs()) | set(fapi.get_deps())))
+        flights = ledoclient.get_flights()
 
         if len(args) > 0:
             prefix = args[0].upper()
-            filtered = [f for f in flights if f.startswith(prefix)]
-            flights = filtered
+            flights = [f for f in flights if f.startswith(prefix)]
 
         resp = '\n'.join(flights)
 
@@ -409,29 +389,18 @@ def cmd_aircraft(bot, update, args):
 
         aircraft = args[0].upper()
         aircraft = aircraft.replace('-', '')
-        found = False
-        fapi.update()
-
-        for depnr in fapi.get_deps():
-            deps = fapi.get_dep(depnr)
-            for dep in deps:
-                if dep['acreg'] == aircraft:
-                    found = True
-                    resp = fmt_dep(dep)
+        try:
+            for flight in ledoclient.get_aircraft(aircraft):
+                if flight['arrival']:
+                    resp = fmt_arr(flight)
                     bot.sendMessage(chat_id=update.message.chat_id, text=resp)
-
-        for arrnr in fapi.get_arrs():
-            arrs = fapi.get_arr(arrnr)
-            for arr in arrs:
-                if arr['acreg'] == aircraft:
-                    found = True
-                    resp = fmt_arr(arr)
+                else:
+                    resp = fmt_dep(flight)
                     bot.sendMessage(chat_id=update.message.chat_id, text=resp)
-
-        if not found:
+        except ledoproxy.NoFlight:
             resp = 'No flights found'
             bot.sendMessage(chat_id=update.message.chat_id, text=resp)
-
+            return
 
     except:
         traceback.print_exc()
