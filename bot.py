@@ -15,33 +15,33 @@ import requests
 
 import traceback
 
+import logging
+logging.basicConfig(level=logging.INFO, format='%(levelname)-8s %(name)s %(message)s')
+logger = logging.getLogger('ledobot')
+
 with open('config.json', 'r') as f:
     config = json.loads(f.read())
-
-def logLine(text):
-    ts = time.strftime('%d.%m.%y %H:%M:%S')
-    print('%s >> %s'%(ts, text), flush=True)
-
 
 def log_msg(update):
     m = update.message
     text = m.text
-    username = m.from_user.username
-    fullname = ' '.join((m.from_user.first_name, m.from_user.last_name))
+    userdata = m.from_user.to_dict()
 
-    if username:
-        sender = username
+    if 'username' in userdata.keys():
+        sender = userdata['username']
+    elif 'last_name' in userdata.keys():
+        sender = '%s %s' % (userdata['first_name'], userdata['last_name'])
     else:
-        sender = fullname
-
+        sender = userdata['first_name']
 
     if m.chat.type == 'group':
         chat = 'group:%s' % m.chat.title
     else:
         chat = m.chat.type
 
-    line = ' : '.join((chat, sender, text))
-    logLine(line)
+    prefix = 'msg:%s' % chat
+    logger.info(' :: '.join((prefix, sender, text)))
+
 
 ledoclient = ledoproxy.ProxyClient(config['ledoproxy']['url'])
 airports = airport.Airports()
@@ -386,7 +386,6 @@ dispatcher.add_handler(CommandHandler('flight', cmd_flight, pass_args=True))
 dispatcher.add_handler(CommandHandler('flights', cmd_flights, pass_args=True))
 dispatcher.add_handler(CommandHandler('aircraft', cmd_aircraft, pass_args=True))
 
-logLine('Starting..')
 updater.start_polling()
 updater.idle()
 
