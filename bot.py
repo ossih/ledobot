@@ -52,24 +52,24 @@ updater = Updater(token=config['telegram']['token'])
 dispatcher = updater.dispatcher
 
 def start(bot, update):
-    bot.sendMessage(chat_id=update.message.chat_id, text='yrlbnry')
+    bot.sendMessage(chat_id=update.message.chat_id, text='yrlbnry', parse_mode='Markdown')
 
 def cmd_flight(bot, update, args):
     log_msg(update)
     try:
         if len(args) == 0:
             resp = 'Which flight?'
-            bot.sendMessage(chat_id=update.message.chat_id, text=resp)
+            bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
             return
 
         fltnr = args[0].upper()
         try:
             for flight in ledoclient.get_flight(fltnr):
                 fmt = formatting.FinaviaFormatter(flight)
-                bot.sendMessage(chat_id=update.message.chat_id, text=fmt.to_text())
+                bot.sendMessage(chat_id=update.message.chat_id, text=fmt.to_text(), parse_mode='Markdown')
         except ledoproxy.NoFlight:
             resp = 'Flight %s not found' % fltnr
-            bot.sendMessage(chat_id=update.message.chat_id, text=resp)
+            bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
             return
 
     except:
@@ -89,7 +89,7 @@ def cmd_flights(bot, update, args):
         if not flights:
             resp = 'No flights found'
 
-        bot.sendMessage(chat_id=update.message.chat_id, text=resp)
+        bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
 
     except:
         traceback.print_exc()
@@ -108,7 +108,7 @@ def cmd_metar(bot, update, args):
             except airport.NoData:
                 resp = '%s not found' % code
 
-        bot.sendMessage(chat_id=update.message.chat_id, text=resp)
+        bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
 
     except:
         traceback.print_exc()
@@ -117,7 +117,7 @@ def cmd_aircraft(bot, update, args):
     try:
         if len(args) == 0:
             resp = 'Which aircraft?'
-            bot.sendMessage(chat_id=update.message.chat_id, text=resp)
+            bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
             return
 
         aircraft = args[0].upper()
@@ -125,10 +125,10 @@ def cmd_aircraft(bot, update, args):
         try:
             for flight in ledoclient.get_aircraft(aircraft):
                 fmt = formatting.FinaviaFormatter(flight)
-                bot.sendMessage(chat_id=update.message.chat_id, text=fmt.to_text())
+                bot.sendMessage(chat_id=update.message.chat_id, text=fmt.to_text(), parse_mode='Markdown')
         except ledoproxy.NoFlight:
             resp = 'No flights found'
-            bot.sendMessage(chat_id=update.message.chat_id, text=resp)
+            bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
             return
 
     except:

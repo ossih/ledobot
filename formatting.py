@@ -45,7 +45,7 @@ class FinaviaFormatter(object):
 
         path = self.build_path()
         fpath = ' - '.join(path)
-        fname = '%s %s' % (fltnr, fpath)
+        fname = '**%s %s**' % (fltnr, fpath)
 
         return fname
 
