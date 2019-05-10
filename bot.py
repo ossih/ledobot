@@ -5,6 +5,7 @@ from telegram.ext import Updater, CommandHandler
 import ledoproxy
 import airport
 import formatting
+import ledotracker
 
 import re
 import sys
@@ -47,6 +48,7 @@ def log_msg(update):
 ledoclient = ledoproxy.ProxyClient(config['ledoproxy']['url'])
 airports = airport.Airports()
 metar = airport.Metar()
+tracker = ledotracker.TrackerClient(config['ledotracker']['url'])
 
 updater = Updater(token=config['telegram']['token'])
 dispatcher = updater.dispatcher
@@ -115,6 +117,7 @@ def cmd_metar(bot, update, args):
 
 def cmd_aircraft(bot, update, args):
     try:
+        log_msg(update)
         if len(args) == 0:
             resp = 'Which aircraft?'
             bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
@@ -134,12 +137,38 @@ def cmd_aircraft(bot, update, args):
     except:
         traceback.print_exc()
 
+def cmd_track(bot, update, args):
+    try:
+        log_msg(update)
+        if len(args) == 0:
+            resp = 'Which flight?'
+            bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
+            return
+
+        fltnr = args[0].upper()
+        chatid = update.message.chat_id
+        userdata = update.message.from_user.to_dict()
+        if 'username' in userdata.keys():
+            notify = '@%s' % userdata['username']
+        else:
+            notify = userdata['first_name']
+
+        if chatid == userdata['id']:
+            resp = tracker.track(fltnr, chatid)
+        else:
+            resp = tracker.track(fltnr, userdata['id'], chan=chatid, notify=notify)
+
+        bot.sendMessage(chat_id=update.message.chat_id, text=resp['message'], parse_mode='Markdown')
+
+    except:
+        traceback.print_exc()
 
 dispatcher.add_handler(CommandHandler('start', start))
 dispatcher.add_handler(CommandHandler('metar', cmd_metar, pass_args=True))
 dispatcher.add_handler(CommandHandler('flight', cmd_flight, pass_args=True))
 dispatcher.add_handler(CommandHandler('flights', cmd_flights, pass_args=True))
 dispatcher.add_handler(CommandHandler('aircraft', cmd_aircraft, pass_args=True))
+dispatcher.add_handler(CommandHandler('track', cmd_track, pass_args=True))
 
 updater.start_polling()
 updater.idle()
