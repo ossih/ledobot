@@ -1,6 +1,9 @@
 import requests
 import json
 
+class ConnectionError(Exception):
+    pass
+
 class NoFlight(Exception):
     pass
 
@@ -14,8 +17,11 @@ class ProxyClient(object):
     def _http_request(self, query):
         headers = {}
         url = '%s/%s' % (self._apiurl, query)
-        res = requests.get(url, headers=headers)
-        return res.json()
+        try:
+            res = requests.get(url, headers=headers)
+            return res.json()
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            raise ConnectionError
 
     def get_flights(self):
         query = 'flights'

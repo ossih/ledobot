@@ -62,6 +62,8 @@ class Tracker(threading.Thread):
                 flights = ledoclient.get_flight(fltnr)
             except ledoproxy.NoFlight:
                 raise TrackingFailed('Flight %s not found' % fltnr)
+            except ledoproxy.ConnectionError:
+                raise TrackingFailed('Connection error')
 
             # Remove flights that are gone - arrivals not supported yet
             flights = [f for f in flights if not f['arrival'] and f['prt'] not in ['Departed', 'Cancelled']]
