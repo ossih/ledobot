@@ -11,6 +11,7 @@ import threading
 import bottle
 import dictdiffer
 import traceback
+import datetime
 
 import logging
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)-8s %(name)s %(message)s')
@@ -65,17 +66,42 @@ class Tracker(threading.Thread):
             except ledoproxy.ConnectionError:
                 raise TrackingFailed('Connection error')
 
-            # Remove flights that are gone - arrivals not supported yet
-            flights = [f for f in flights if not f['arrival'] and f['prt'] not in ['Departed', 'Cancelled']]
+            # Remove flights that are gone
+            flights = [f for f in flights if f['prt'] not in ['Departed', 'Landed', 'Cancelled']]
             if not flights:
                 raise TrackingFailed('No upcoming flights with code %s' % fltnr)
 
-            # Only first is interesting
-            flight = flights[0]
+            deps = list(filter(lambda x: not x['arrival'], flights))
+            arrs = list(filter(lambda x: x['arrival'], flights))
+
+            now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+            deps_until = now + datetime.timedelta(hours=24)
+            arrs_until = deps_until
+
+            dep = None
+            arr = None
+
+            if deps:
+                pdep = deps[0]
+                deptime = formatting.parse_time(pdep['sdt'])
+                if deptime < deps_until:
+                    dep = pdep
+                    arrs_until = deptime + datetime.timedelta(hours=24)
+
+            if arrs:
+                parr = arrs[0]
+                arrtime = formatting.parse_time(parr['sdt'])
+                if arrtime < arrs_until:
+                    arr = parr
+
+            # If tracking arrival after being departed, wrong departure may track
+            if dep and arr:
+                if formatting.parse_time(dep['sdt']) > formatting.parse_time(arr['sdt']):
+                    dep = None
 
             logger.info('Adding flight %s to tracker.' % fltnr)
             try:
-                self._tracked_flights[fltnr] = TrackedFlight(flight)
+                self._tracked_flights[fltnr] = TrackedFlight(fltnr, dep=dep, arr=arr)
             except:
                 traceback.print_exc()
                 raise TrackingFailed('General error occurred. See syslog for details.')
@@ -86,10 +112,10 @@ class Tracker(threading.Thread):
 
 
 class TrackedFlight(object):
-    def __init__(self, flight):
-        self._state = flight
-        self._fltnr = flight['fltnr']
-        self._sdate = flight['sdate']
+    def __init__(self, fltnr, dep, arr):
+        self._fltnr = fltnr
+        self._dep = dep
+        self._arr = arr
         self._priv_subs = []
         self._chan_subs = {}
 
@@ -102,17 +128,43 @@ class TrackedFlight(object):
     def update_status(self):
         try:
             flights = ledoclient.get_flight(self._fltnr)
-            flight = [f for f in flights if f['sdate'] == self._state['sdate'] and f['arrival'] == self._state['arrival']][0]
-        except:
+        except ledoproxy.NoFlight:
             logger.info('Flight %s disppeared. Cleaning..' % self._fltnr)
             self._priv_subs = []
             self._chan_subs = {}
             return
+        except ledoproxy.ConnectionError:
+            logger.error('Could not get flight status. Skipping this round for %s' % self._fltnr)
+            return
 
-        diff = list(dictdiffer.diff(self._state, flight))
-        if diff:
-            self.send_notifies(flight, diff)
-            self._state = flight
+
+        if self._dep:
+            deps = [f for f in flights if f['sdate'] == self._dep['sdate'] and not f['arrival']]
+            if deps:
+                dep = deps[0]
+                diff = list(dictdiffer.diff(self._dep, dep))
+                if diff:
+                    self.send_notifies(dep, diff)
+                    self._dep = dep
+            else:
+                self._dep = None
+
+        if self._arr:
+            arrs = [f for f in flights if f['sdate'] == self._arr['sdate'] and f['arrival']]
+            if arrs:
+                arr = arrs[0]
+                diff = list(dictdiffer.diff(self._arr, arr))
+                if diff:
+                    self.send_notifies(arr, diff)
+                    self._arr = arr
+            else:
+                self._arr = None
+
+        if not self._dep and not self._arr:
+            logger.info('Flight %s completed. Cleaning..' % self._fltnr)
+            self._priv_subs = []
+            self._chan_subs = {}
+            return
 
         self.set_next_update()
         return
@@ -139,7 +191,8 @@ class TrackedFlight(object):
                     'park': 'fmt_park',
                     'prm': 'fmt_status',
                     'est_d': 'fmt_est',
-                    'act_d': 'fmt_act'
+                    'act_d': 'fmt_act',
+                    'bltarea': 'fmt_belt'
                     }
             if not cvalue in interesting.keys():
                 continue
