@@ -44,7 +44,6 @@ def log_msg(update):
     prefix = 'msg:%s' % chat
     logger.info(' :: '.join((prefix, sender, text)))
 
-
 ledoclient = ledoproxy.ProxyClient(config['ledoproxy']['url'])
 airports = airport.Airports()
 metar = airport.Metar()
@@ -53,10 +52,62 @@ tracker = ledotracker.TrackerClient(config['ledotracker']['url'])
 updater = Updater(token=config['telegram']['token'])
 dispatcher = updater.dispatcher
 
-def start(bot, update):
-    bot.sendMessage(chat_id=update.message.chat_id, text='yrlbnry', parse_mode='Markdown')
+class CmdHandler(object):
+    def __init__(self, dispatcher):
+        self._commands = {}
+        self._dispatcher = dispatcher
 
+    def cmd(self, func):
+        name = func.__name__
+        if name.startswith('cmd_'):
+            name = name.split('_', 1)[1]
+        self._commands[name] = func
+
+        self._dispatcher.add_handler(CommandHandler(name, func, pass_args=True))
+        return func
+
+    def get_cmds(self):
+        return self._commands.keys()
+
+    def get_helps(self):
+        return dict((name, func.__doc__) for name, func in self._commands.items() if func.__doc__)
+
+cmdhandler = CmdHandler(dispatcher)
+
+@cmdhandler.cmd
+def cmd_start(bot, update, args):
+    """Start usage.. Does nothing."""
+    bot.sendMessage(chat_id=update.message.chat_id, text='You need /help?', parse_mode='Markdown')
+
+
+@cmdhandler.cmd
+def cmd_help(bot, update, args):
+    """Get help"""
+    cmds = cmdhandler.get_cmds()
+    helps = cmdhandler.get_helps()
+
+    if len(args) == 0:
+        rows = []
+        for cmd in cmds:
+            if cmd == 'start':
+                continue
+            if cmd in helps.keys():
+                rows.append('/%s - %s' % (cmd, helps[cmd]))
+            else:
+                rows.append('/%s' % cmd)
+        resp = '\n'.join(rows)
+
+    elif args[0] in helps.keys():
+        resp = helps[args[0]]
+
+    else:
+        resp = '??'
+
+    bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
+
+@cmdhandler.cmd
 def cmd_flight(bot, update, args):
+    """Get flight info"""
     log_msg(update)
     try:
         if len(args) == 0:
@@ -77,7 +128,9 @@ def cmd_flight(bot, update, args):
     except:
         traceback.print_exc()
 
+@cmdhandler.cmd
 def cmd_flights(bot, update, args):
+    """List flights with given prefix"""
     log_msg(update)
     try:
         flights = ledoclient.get_flights()
@@ -96,7 +149,9 @@ def cmd_flights(bot, update, args):
     except:
         traceback.print_exc()
 
+@cmdhandler.cmd
 def cmd_metar(bot, update, args):
+    """Get METAR by ICAO or IATA identifier"""
     try:
         log_msg(update)
         if len(args) == 0:
@@ -115,7 +170,9 @@ def cmd_metar(bot, update, args):
     except:
         traceback.print_exc()
 
+@cmdhandler.cmd
 def cmd_aircraft(bot, update, args):
+    """Get flights for given aircraft"""
     try:
         log_msg(update)
         if len(args) == 0:
@@ -137,7 +194,9 @@ def cmd_aircraft(bot, update, args):
     except:
         traceback.print_exc()
 
+@cmdhandler.cmd
 def cmd_track(bot, update, args):
+    """Track departure and arrival of flight"""
     try:
         log_msg(update)
         if len(args) == 0:
@@ -163,12 +222,10 @@ def cmd_track(bot, update, args):
     except:
         traceback.print_exc()
 
-dispatcher.add_handler(CommandHandler('start', start))
-dispatcher.add_handler(CommandHandler('metar', cmd_metar, pass_args=True))
-dispatcher.add_handler(CommandHandler('flight', cmd_flight, pass_args=True))
-dispatcher.add_handler(CommandHandler('flights', cmd_flights, pass_args=True))
-dispatcher.add_handler(CommandHandler('aircraft', cmd_aircraft, pass_args=True))
-dispatcher.add_handler(CommandHandler('track', cmd_track, pass_args=True))
+@cmdhandler.cmd
+def cmd_untrack(bot, update, args):
+    """Please open pull request if you need this.."""
+    return
 
 updater.start_polling()
 updater.idle()
