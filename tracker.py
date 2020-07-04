@@ -144,7 +144,7 @@ class TrackedFlight(object):
                 dep = deps[0]
                 diff = list(dictdiffer.diff(self._dep, dep))
                 if diff:
-                    self.send_notifies(dep, diff)
+                    self.send_notifies(self._dep, dep, diff)
                     self._dep = dep
             else:
                 self._dep = None
@@ -155,7 +155,7 @@ class TrackedFlight(object):
                 arr = arrs[0]
                 diff = list(dictdiffer.diff(self._arr, arr))
                 if diff:
-                    self.send_notifies(arr, diff)
+                    self.send_notifies(self._arr, arr, diff)
                     self._arr = arr
             else:
                 self._arr = None
@@ -173,32 +173,36 @@ class TrackedFlight(object):
         self._next_update = time.time() + 30
         return
 
-    def send_notifies(self, flight, diff):
-        fmt = formatting.FinaviaFormatter(flight)
+    def send_notifies(self, old, new, diff):
+        interesting = {
+                'aircraft': 'fmt_aircraft',
+                'acreg': 'fmt_aircraft',
+                'gate': 'fmt_gate',
+                'park': 'fmt_park',
+                'prm': 'fmt_status',
+                'est_d': 'fmt_est',
+                'act_d': 'fmt_act',
+                'bltarea': 'fmt_belt'
+        }
+
+        fmt_o = formatting.FinaviaFormatter(old)
+        fmt_n = formatting.FinaviaFormatter(new)
         to_send = False
         lines = []
-        lines.append(fmt.fmt_name())
-        lines.append(fmt.fmt_time())
+        lines.append(fmt_o.fmt_name())
+        lines.append(fmt_o.fmt_time())
+        if old['est_d']:
+            lines.append(fmt_o.fmt_est())
         lines.append('')
         lines.append('**NEW INFO**')
         for ctype, cvalue, change in diff:
             if ctype != 'change':
                 continue
-            interesting = {
-                    'aircraft': 'fmt_aircraft',
-                    'acreg': 'fmt_aircraft',
-                    'gate': 'fmt_gate',
-                    'park': 'fmt_park',
-                    'prm': 'fmt_status',
-                    'est_d': 'fmt_est',
-                    'act_d': 'fmt_act',
-                    'bltarea': 'fmt_belt'
-                    }
             if not cvalue in interesting.keys():
                 continue
             attr = interesting[cvalue]
             try:
-                line = getattr(fmt, attr)()
+                line = getattr(fmt_n, attr)()
                 lines.append(line)
                 to_send = True
             except:
