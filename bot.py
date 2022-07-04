@@ -224,8 +224,27 @@ def cmd_track(bot, update, args):
 
 @cmdhandler.cmd
 def cmd_untrack(bot, update, args):
-    """Please open pull request if you need this.."""
-    return
+    """Stop tracking flight"""
+    try:
+        log_msg(update)
+        if len(args) == 0:
+            resp = 'Which flight?'
+            bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
+            return
+
+        fltnr = args[0].upper()
+        chatid = update.message.chat_id
+        userdata = update.message.from_user.to_dict()
+
+        if chatid == userdata['id']:
+            resp = tracker.untrack(fltnr, chatid)
+        else:
+            resp = tracker.untrack(fltnr, userdata['id'], chan=chatid)
+
+        bot.sendMessage(chat_id=update.message.chat_id, text=resp['message'], parse_mode='Markdown')
+
+    except:
+        traceback.print_exc()
 
 updater.start_polling()
 updater.idle()

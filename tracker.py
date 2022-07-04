@@ -28,6 +28,9 @@ updater = Updater(token=config['telegram']['token'])
 class TrackingFailed(Exception):
     pass
 
+class UntrackingFailed(Exception):
+    pass
+
 class Tracker(threading.Thread):
     def __init__(self):
         super().__init__()
@@ -109,6 +112,13 @@ class Tracker(threading.Thread):
         self._tracked_flights[fltnr].add_sub(user, chan, notify)
 
         return
+
+    def del_tracker(self, fltnr, user, chan=None):
+        if not fltnr in self._tracked_flights.keys():
+            raise UntrackingFailed('No tracking started for %s' % fltnr)
+
+        self._tracked_flights[fltnr].del_sub(user, chan)
+
 
 
 class TrackedFlight(object):
@@ -259,6 +269,26 @@ class TrackedFlight(object):
             else:
                 self._chan_subs[chan].append((user, notify))
 
+    def del_sub(self, user, chan=None):
+        if not chan:
+            if not user in self._priv_subs:
+                raise UntrackingFailed('You are not tracking flight %s' % self._fltnr)
+            else:
+                del self._priv_subs[self._priv_subs.index(user)]
+
+        else:
+            if not chan in self._chan_subs.keys():
+                raise UntrackingFailed('Flight %s not being tracked in this channel' % self._fltnr)
+            userlist = list(map(lambda x:x[0], self._chan_subs[chan]))
+            if not user in userlist:
+                raise UntrackingFailed('You are not tracking flight %s in this channel' % self._fltnr)
+
+            del self._chan_subs[chan][userlist.index(user)]
+
+            if not self._chan_subs[chan]:
+                del self._chan_subs[chan]
+
+
 @bottle.route('/track', method='POST')
 def r_track():
     payload = bottle.request.json
@@ -285,6 +315,20 @@ def r_track():
             return bottle.HTTPResponse(json.dumps({'status': 'error', 'message': str(e)}), status=500)
 
 
+@bottle.route('/untrack', method='POST')
+def r_untrack():
+    payload = bottle.request.json
+
+    if not 'fltnr' in payload.keys():
+        return bottle.HTTPResponse(json.dumps({'status': 'error', 'message': 'Flight number is mandatory'}), status=500)
+    if not 'user' in payload.keys():
+        return bottle.HTTPResponse(json.dumps({'status': 'error', 'message': 'User ID is mandatory'}), status=500)
+
+    try:
+        tracker.del_tracker(payload['fltnr'], payload['user'], chan=payload.get('chan', None))
+        return bottle.HTTPResponse(json.dumps({'status': 'success', 'message': 'Tracker deleted'}))
+    except UntrackingFailed as e:
+        return bottle.HTTPResponse(json.dumps({'status': 'error', 'message': str(e)}), status=500)
 
 
 def add_all():
