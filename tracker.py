@@ -242,6 +242,15 @@ class TrackedFlight(object):
             else:
                 self._priv_subs.append(user)
 
+                # Send initial flight info when used privately
+                if self._dep:
+                    fmt = formatting.FinaviaFormatter(self._dep)
+                    updater.bot.sendMessage(chat_id=user, text=fmt.to_text(), parse_mode='Markdown')
+
+                if self._arr:
+                    fmt = formatting.FinaviaFormatter(self._arr)
+                    updater.bot.sendMessage(chat_id=user, text=fmt.to_text(), parse_mode='Markdown')
+
         else:
             if not chan in self._chan_subs.keys():
                 self._chan_subs[chan] = []
