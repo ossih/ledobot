@@ -31,12 +31,11 @@ class TrackingFailed(Exception):
 class Tracker(threading.Thread):
     def __init__(self):
         super().__init__()
-        self._is_running = False
+        self._stopflag = threading.Event()
         self._tracked_flights = {}
 
     def run(self):
-        self._is_running = True
-        while self._is_running:
+        while not self._stopflag.wait(timeout=1):
             logger.debug('Checking flights needing updates')
             abandoned = []
             for fltnr, flight in self._tracked_flights.items():
@@ -54,7 +53,8 @@ class Tracker(threading.Thread):
             time.sleep(1)
 
     def stop(self):
-        self._is_running = False
+        self._stopflag.set()
+        self.join()
         return
 
     def add_tracker(self, fltnr, user, chan=None, notify=None):
