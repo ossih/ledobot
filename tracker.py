@@ -200,6 +200,13 @@ class TrackedFlight(object):
                 continue
             if not cvalue in interesting.keys():
                 continue
+            if cvalue == 'est_d' and old['est_d'] and new['est_d']:
+                oldtime = formatting.parse_time(old['est_d'])
+                newtime = formatting.parse_time(new['est_d'])
+                if abs(oldtime - newtime) < datetime.timedelta(secounds=60):
+                    logger.debug('Skipping estimate spam for %s' % self._fltnr)
+                    continue
+
             attr = interesting[cvalue]
             try:
                 line = getattr(fmt_n, attr)()
