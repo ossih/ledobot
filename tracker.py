@@ -40,20 +40,14 @@ class Tracker(threading.Thread):
     def run(self):
         while not self._stopflag.wait(timeout=1):
             logger.debug('Checking flights needing updates')
-            abandoned = []
-            for fltnr, flight in self._tracked_flights.items():
+            for fltnr, flight in list(self._tracked_flights.items()):
                 if flight.needs_update():
                     logger.debug('Invoking update for flight %s' % fltnr)
                     flight.update_status()
                     if flight.is_abandoned():
-                        abandoned.append(fltnr)
+                        logger.debug('Invoking delete for flight %s' % fltnr)
+                        del self._tracked_flights[fltnr]
 
-            for fltnr in abandoned:
-                logger.debug('Invoking delete for flight %s' % fltnr)
-                del self._tracked_flights[fltnr]
-
-
-            time.sleep(1)
 
     def stop(self):
         self._stopflag.set()
