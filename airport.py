@@ -37,7 +37,7 @@ class Airports(object):
 
 class Metar(object):
     def __init__(self):
-        self._baseurl = 'http://tgftp.nws.noaa.gov/data/observations/metar/stations/{}.TXT'
+        self._baseurl = 'https://tgftp.nws.noaa.gov/data/observations/metar/stations/{}.TXT'
         self._rex_icao = re.compile('^[A-Z0-9]{4}$')
         self._rex_iata = re.compile('^[A-Z]{3}$')
         self._airports = Airports()
