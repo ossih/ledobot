@@ -75,14 +75,16 @@ class CmdHandler(object):
 cmdhandler = CmdHandler(dispatcher)
 
 @cmdhandler.cmd
-def cmd_start(bot, update, args):
+def cmd_start(update, context):
     """Start usage.. Does nothing."""
-    bot.sendMessage(chat_id=update.message.chat_id, text='You need /help?', parse_mode='Markdown')
+    context.bot.sendMessage(chat_id=update.message.chat_id, text='You need /help?', parse_mode='Markdown')
 
 
 @cmdhandler.cmd
-def cmd_help(bot, update, args):
+def cmd_help(update, context):
     """Get help"""
+    log_msg(update)
+    args = context.args
     cmds = cmdhandler.get_cmds()
     helps = cmdhandler.get_helps()
 
@@ -103,35 +105,37 @@ def cmd_help(bot, update, args):
     else:
         resp = '??'
 
-    bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
+    context.bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
 
 @cmdhandler.cmd
-def cmd_flight(bot, update, args):
+def cmd_flight(update, context):
     """Get flight info"""
     log_msg(update)
+    args = context.args
     try:
         if len(args) == 0:
             resp = 'Which flight?'
-            bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
+            context.bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
             return
 
         fltnr = args[0].upper()
         try:
             for flight in ledoclient.get_flight(fltnr):
                 fmt = formatting.FinaviaFormatter(flight)
-                bot.sendMessage(chat_id=update.message.chat_id, text=fmt.to_text(), parse_mode='Markdown')
+                context.bot.sendMessage(chat_id=update.message.chat_id, text=fmt.to_text(), parse_mode='Markdown')
         except ledoproxy.NoFlight:
             resp = 'Flight %s not found' % fltnr
-            bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
+            context.bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
             return
 
     except:
         traceback.print_exc()
 
 @cmdhandler.cmd
-def cmd_flights(bot, update, args):
+def cmd_flights(update, context):
     """List flights with given prefix"""
     log_msg(update)
+    args = context.args
     try:
         flights = ledoclient.get_flights()
 
@@ -144,16 +148,17 @@ def cmd_flights(bot, update, args):
         if not flights:
             resp = 'No flights found'
 
-        bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
+        context.bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
 
     except:
         traceback.print_exc()
 
 @cmdhandler.cmd
-def cmd_metar(bot, update, args):
+def cmd_metar(update, context):
     """Get METAR by ICAO or IATA identifier"""
+    log_msg(update)
+    args = context.args
     try:
-        log_msg(update)
         if len(args) == 0:
             resp = '??'
 
@@ -165,19 +170,20 @@ def cmd_metar(bot, update, args):
             except airport.NoData:
                 resp = '%s not found' % code
 
-        bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
+        context.bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
 
     except:
         traceback.print_exc()
 
 @cmdhandler.cmd
-def cmd_aircraft(bot, update, args):
+def cmd_aircraft(update, context):
     """Get flights for given aircraft"""
+    log_msg(update)
+    args = context.args
     try:
-        log_msg(update)
         if len(args) == 0:
             resp = 'Which aircraft?'
-            bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
+            context.bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
             return
 
         aircraft = args[0].upper()
@@ -185,23 +191,24 @@ def cmd_aircraft(bot, update, args):
         try:
             for flight in ledoclient.get_aircraft(aircraft):
                 fmt = formatting.FinaviaFormatter(flight)
-                bot.sendMessage(chat_id=update.message.chat_id, text=fmt.to_text(), parse_mode='Markdown')
+                context.bot.sendMessage(chat_id=update.message.chat_id, text=fmt.to_text(), parse_mode='Markdown')
         except ledoproxy.NoFlight:
             resp = 'No flights found'
-            bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
+            context.bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
             return
 
     except:
         traceback.print_exc()
 
 @cmdhandler.cmd
-def cmd_track(bot, update, args):
+def cmd_track(update, context):
     """Track departure and arrival of flight"""
+    log_msg(update)
+    args = context.args
     try:
-        log_msg(update)
         if len(args) == 0:
             resp = 'Which flight?'
-            bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
+            context.bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
             return
 
         fltnr = args[0].upper()
@@ -217,19 +224,20 @@ def cmd_track(bot, update, args):
         else:
             resp = tracker.track(fltnr, userdata['id'], chan=chatid, notify=notify)
 
-        bot.sendMessage(chat_id=update.message.chat_id, text=resp['message'], parse_mode='Markdown')
+        context.bot.sendMessage(chat_id=update.message.chat_id, text=resp['message'], parse_mode='Markdown')
 
     except:
         traceback.print_exc()
 
 @cmdhandler.cmd
-def cmd_untrack(bot, update, args):
+def cmd_untrack(update, context):
     """Stop tracking flight"""
+    log_msg(update)
+    args = context.args
     try:
-        log_msg(update)
         if len(args) == 0:
             resp = 'Which flight?'
-            bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
+            context.bot.sendMessage(chat_id=update.message.chat_id, text=resp, parse_mode='Markdown')
             return
 
         fltnr = args[0].upper()
@@ -241,7 +249,7 @@ def cmd_untrack(bot, update, args):
         else:
             resp = tracker.untrack(fltnr, userdata['id'], chan=chatid)
 
-        bot.sendMessage(chat_id=update.message.chat_id, text=resp['message'], parse_mode='Markdown')
+        context.bot.sendMessage(chat_id=update.message.chat_id, text=resp['message'], parse_mode='Markdown')
 
     except:
         traceback.print_exc()

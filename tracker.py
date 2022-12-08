@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from telegram.ext import Updater, CommandHandler
+import telegram
 import ledoproxy
 import formatting
 
@@ -14,7 +14,7 @@ import traceback
 import datetime
 
 import logging
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)-8s %(name)s %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(levelname)-8s %(name)s %(message)s')
 logger = logging.getLogger('ledotracker')
 
 with open('config.json', 'r') as f:
@@ -23,7 +23,7 @@ with open('config.json', 'r') as f:
 
 ledoclient = ledoproxy.ProxyClient(config['ledoproxy']['url'])
 
-updater = Updater(token=config['telegram']['token'])
+bot = telegram.Bot(token=config['telegram']['token'])
 
 class TrackingFailed(Exception):
     pass
@@ -234,7 +234,7 @@ class TrackedFlight(object):
                 self.send_notify(chan, ctext)
 
     def send_notify(self, chatid, text):
-        updater.bot.sendMessage(chat_id=chatid, text=text, parse_mode='Markdown')
+        bot.sendMessage(chat_id=chatid, text=text, parse_mode='Markdown')
 
     def is_abandoned(self):
         return not self._priv_subs and not self._chan_subs
@@ -249,11 +249,11 @@ class TrackedFlight(object):
                 # Send initial flight info when used privately
                 if self._dep:
                     fmt = formatting.FinaviaFormatter(self._dep)
-                    updater.bot.sendMessage(chat_id=user, text=fmt.to_text(), parse_mode='Markdown')
+                    bot.sendMessage(chat_id=user, text=fmt.to_text(), parse_mode='Markdown')
 
                 if self._arr:
                     fmt = formatting.FinaviaFormatter(self._arr)
-                    updater.bot.sendMessage(chat_id=user, text=fmt.to_text(), parse_mode='Markdown')
+                    bot.sendMessage(chat_id=user, text=fmt.to_text(), parse_mode='Markdown')
 
         else:
             if not chan in self._chan_subs.keys():
